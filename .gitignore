@@ -1,0 +1,31 @@
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# node / web
+node_modules/
+web/dist/
+*.local
+
+# data artifacts — raw shards and the built db are reproducible via `make data`
+pipeline/data/raw/
+pipeline/data/derived/*.duckdb
+pipeline/data/derived/*.parquet
+
+# tldextract runtime cache (we pin our own snapshot under data/psl)
+.tld_set*
+.suffix_cache/
+
+# env / editor
+.env
+.DS_Store
+.idea/
+.vscode/
+
+# tldextract runtime cache (the pinned snapshot is committed, this is derived)
+pipeline/data/psl/.cache/

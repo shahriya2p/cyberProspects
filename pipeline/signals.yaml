@@ -1,0 +1,228 @@
+# Attack-surface signal taxonomy.
+#
+# Each signal is a fingerprint we can read straight out of a hostname's
+# subdomain, mapped to the sales angle a rep uses when it shows up. The tokens
+# were picked from the actual label frequencies in the dataset (see
+# docs/notes.md) rather than guessed, so they fire on real infrastructure.
+#
+# `bit` is the position this signal occupies in company.signal_mask. Once a
+# build ships those numbers are load-bearing, so append new signals, don't
+# renumber. `weight` drives the exposure score; riskier surfaces weigh more.
+# Tokens match as whole hyphen/dot-delimited components, so `dev` hits
+# dev.acme.com and api-dev.acme.com but not "development".
+
+signals:
+  - key: email
+    bit: 0
+    label: Email infrastructure
+    category: Communications
+    weight: 1.0
+    tokens: [webmail, mail\d*, smtp\d*, smtps, pop, pop3, imap, imaps, mx\d*, autodiscover,
+             autoconfig, mta-sts, owa, exchange, mailserver, mailgw]
+    pitch: Email security / DMARC / anti-phishing
+    talking_point: >-
+      Public mail endpoints (autodiscover and OWA included) are the first stop for
+      phishing and credential stuffing. Good opening to ask whether DMARC is at
+      enforcement and how they handle inbound spoofing.
+
+  - key: hosting_panel
+    bit: 1
+    label: Unmanaged shared hosting
+    category: Hosting
+    weight: 1.3
+    tokens: [cpanel, whm, webdisk, cpcalendars, cpcontacts, plesk, webhost, whmcs, directadmin]
+    pitch: Managed security / patching & hardening
+    talking_point: >-
+      cPanel/WHM/Plesk panels facing the internet get brute-forced constantly and
+      lag on CVEs. Signals a lean IT team running shared hosting — a fit for
+      managed detection and patch discipline.
+
+  - key: remote_access
+    bit: 2
+    label: Remote access / perimeter
+    category: Access
+    weight: 3.0
+    tokens: [vpn, sslvpn, remote, citrix, anyconnect, gateway, rdp, rdweb, vdi, pulse,
+             globalprotect, fortigate, sonicwall, netscaler]
+    pitch: Zero-trust / VPN & ransomware prevention
+    talking_point: >-
+      Exposed VPN and remote-access gateways are the number-one ransomware entry
+      vector. Lead with MFA coverage and patch cadence on the edge appliance.
+
+  - key: devops
+    bit: 3
+    label: Exposed engineering surface
+    category: Engineering
+    weight: 2.5
+    tokens: [git, gitlab, gitea, jenkins, jira, confluence, nexus, sonar, sonarqube,
+             artifactory, drone, bamboo, teamcity, registry, harbor, argocd, grafana, kibana]
+    pitch: Secrets & source protection / DevSecOps
+    talking_point: >-
+      Internet-reachable git, CI, or dashboards leak source and, too often,
+      secrets. Ask what stops a scraped token from turning into prod access.
+
+  - key: nonprod
+    bit: 4
+    label: Non-production exposed
+    category: Engineering
+    weight: 2.0
+    tokens: [dev, staging, stage, test, testing, uat, qa, sandbox, sbx, demo, preprod, beta]
+    pitch: External attack surface management
+    talking_point: >-
+      Dev and staging hosts are usually under-hardened yet publicly reachable — a
+      classic soft entry point that never shows up in the asset inventory.
+
+  - key: admin
+    bit: 5
+    label: Admin & management panels
+    category: Access
+    weight: 2.2
+    tokens: [admin, adminer, phpmyadmin, pma, pgadmin, myadmin, webadmin, administrator,
+             panel, cpadmin, manage, manager, backend, dashboard]
+    pitch: Access control / exposure monitoring
+    talking_point: >-
+      Exposed admin and database consoles invite brute-force and injection. Worth
+      confirming whether these should be public at all or belong behind the VPN.
+
+  - key: storage
+    bit: 6
+    label: Storage & file transfer
+    category: Data
+    weight: 1.6
+    tokens: [nas, ftp, ftps, sftp, files, fileserver, backup, backups, storage, share,
+             smb, minio, nextcloud, owncloud, webdav]
+    pitch: Data protection / DLP
+    talking_point: >-
+      Public FTP, NAS, and backup endpoints are quiet exfiltration paths. A good
+      hook for data-loss prevention and egress monitoring.
+
+# Scoring knobs live here so the model stays in one place. See docs/scoring.md.
+scoring:
+  signal_weight: 0.55      # share of the exposure score from which signals fire
+  size_weight: 0.30        # share from how many hostnames a company exposes
+  spread_weight: 0.15      # share from how many /24 networks it spans
+  size_cap: 512            # hostname_count that counts as "fully saturated"
+  spread_cap: 64           # net24_count that counts as fully saturated
+
+# Telling a real prospect apart from shared infrastructure is the hardest data
+# call in the pipeline. Dynamic-DNS services, free-subdomain hosts, device
+# clouds, and mass hosting providers all pile thousands of unrelated parties
+# under one registrable domain, so a naive "most subdomains wins" ranking is
+# almost entirely noise. Two things give them away: their hosts sprawl across
+# far more /24 networks than any single company would run, and/or the sheer
+# hostname count is platform-scale. We combine those structural rules with a
+# denylist for the low-footprint free-subdomain services that slip under them.
+infrastructure:
+  # A real company's attack surface lives in a handful of hosting locations.
+  # Sprawl past this many distinct /24s and it's a provider, not a prospect.
+  # (Trade-off: a few very large distributed enterprises get filtered too.)
+  max_networks: 150
+  # No single company publishes this many distinct hostnames.
+  max_hostnames: 8000
+  # Thousands of names pinned to one or two networks = a wildcard/vhost farm.
+  farm_min_hosts: 2000
+  farm_max_networks: 2
+  # Mass shared hosting: lots of names packed onto very few servers.
+  vhost_min_hosts: 1000
+  vhost_ratio: 50   # hostname_count >= this * ip_count
+  # Known dynamic-DNS / free-subdomain / device-cloud / registry domains that
+  # stay under the structural thresholds but are still shared infrastructure.
+  # The *.com / *.net second-level sets are the CentralNic free-subdomain
+  # registries — people register name.uk.com, so the parent isn't a company.
+  domains:
+    - com.ru
+    - uk.net
+    - uk.com
+    - us.com
+    - us.org
+    - eu.com
+    - gb.com
+    - gb.net
+    - ru.com
+    - cn.com
+    - de.com
+    - com.de
+    - za.com
+    - co.nl
+    - co.no
+    - co.ua
+    - jpn.com
+    - hu.net
+    - qc.com
+    - se.net
+    - ae.org
+    - br.com
+    - sa.com
+    - ooguy.com
+    - gleeze.com
+    - home64.de
+    - hstgr.cloud
+    - ovh.net
+    - fbcdn.net
+    - trafficmanager.net
+    - dedicatedpanel.com
+    - remotewd.com
+    - kleinanzegien.de
+    - akadns.net
+    - akamaiedge.net
+    - akamai.net
+    - traefik.me
+    - airdns.org
+    - wswebcdn.com
+    - webglobe.com
+    - duckdns.org
+    - sslip.io
+    - nip.io
+    - quickconnect.to
+    - synology.me
+    - myqnapcloud.com
+    - dahuaddns.com
+    - myfritz.net
+    - plesk.page
+    - myvolumio.org
+    - no-ip.org
+    - no-ip.com
+    - noip.com
+    - ddns.net
+    - ddnsfree.com
+    - dyndns.org
+    - dynu.net
+    - freeddns.org
+    - freemyip.com
+    - now-dns.com
+    - nohost.me
+    - mooo.com
+    - ipv64.net
+    - eu.org
+    - eu.com
+    - net.ru
+    - spb.ru
+    - msk.ru
+    - za.net
+    - fr.nf
+    - us.to
+    - kozow.com
+    - gotdns.ch
+    - giize.com
+    - ddnsgeek.com
+    - serveo.net
+    - ngrok.io
+    - ngrok.app
+    - trycloudflare.com
+    - herokuapp.com
+    - vercel.app
+    - netlify.app
+    - pages.dev
+    - workers.dev
+    - github.io
+    - amazonaws.com
+    - cloudfront.net
+    - azurewebsites.net
+    - appspot.com
+    - stratoserver.net
+
+# Which companies make it into the served database. The raw dataset has millions
+# of one-host domains that no rep would ever prospect; we keep a company only if
+# it shows at least one attack-surface signal or has a footprint worth a look.
+serving:
+  min_hostnames: 6   # below this a domain needs a signal to be kept
