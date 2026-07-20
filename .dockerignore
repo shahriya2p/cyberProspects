@@ -1,0 +1,14 @@
+.git
+.venv
+**/__pycache__
+**/.pytest_cache
+**/.ruff_cache
+web/node_modules
+web/dist
+# raw shards and interim parquet are huge and not needed in the image;
+# the built app.duckdb is copied explicitly by the Dockerfile.
+pipeline/data/raw
+pipeline/data/derived/domain_map.parquet
+pipeline/data/psl/.cache
+docs
+*.md

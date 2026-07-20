@@ -1,0 +1,16 @@
+# Tooling config only — dependencies live in the per-service requirements.txt.
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["B008"]  # fastapi Depends() in defaults is the intended pattern
+
+[tool.black]
+line-length = 100
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["pipeline", "api/tests"]
+pythonpath = [".", "api"]
