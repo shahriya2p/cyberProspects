@@ -37,10 +37,10 @@ export function Explore() {
   const facets = data?.facets ?? { country: [], signal: [] };
 
   return (
-    <div className="flex gap-6">
+    <div className="flex gap-4">
       <FilterPanel filters={filters} update={update} facets={facets} byKey={byKey} />
 
-      <div className="min-w-0 flex-1 space-y-5">
+      <div className="min-w-0 flex-1 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
           <div className="text-sm font-medium text-slate-500 flex items-baseline gap-2">
             <span className="text-3xl font-bold tracking-tight text-slate-900">{commas(data?.total ?? 0)}</span>
@@ -52,7 +52,7 @@ export function Explore() {
               <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Sort</label>
               <Dropdown
                 value={filters.sort}
-                onChange={(e) => update({ sort: e.target.value })}
+                onChange={(val) => update({ sort: val })}
                 options={SORTS}
               />
             </div>

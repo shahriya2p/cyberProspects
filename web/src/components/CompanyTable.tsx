@@ -39,8 +39,8 @@ export function CompanyTable({
             <Header className="text-right">Hosts</Header>
             <Header className="text-right">Nets</Header>
             <Header>Exposed signals</Header>
-            <Header className="w-32">Surface score</Header>
-            <Header className="w-32">Priority score</Header>
+            <Header className="min-w-48">Surface score</Header>
+            <Header className="min-w-48">Priority score</Header>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
