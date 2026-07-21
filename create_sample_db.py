@@ -18,8 +18,8 @@ for t in tables_to_full_copy:
     print(f"Copying {t}...")
     con.execute(f"CREATE TABLE {t} AS SELECT * FROM source.{t}")
 
-print("Copying company (limit 5000)...")
-con.execute("CREATE TABLE company AS SELECT * FROM source.company LIMIT 5000")
+print("Copying company (limit 25000)...")
+con.execute("CREATE TABLE company AS SELECT * FROM source.company LIMIT 25000")
 
 print("Copying company_signal...")
 con.execute("CREATE TABLE company_signal AS SELECT * FROM source.company_signal WHERE domain IN (SELECT domain FROM company)")
